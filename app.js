@@ -25,12 +25,27 @@ class AppStoreScreenshotGenerator {
             subtitle: '',
             titleColor: '#ffffff',
             subtitleColor: '#e0e0e0',
-            titleFontSize: 72,
-            subtitleFontSize: 36,
+            titleFontSize: 48,
+            subtitleFontSize: 28,
             textPosition: 'top',
             showFrame: true,
             frameColor: '#1a1a1a',
-            zoom: 50
+            zoom: 50,
+            // Element positions (relative to canvas, 0-1)
+            textX: 0.5,
+            textY: 0.08,
+            screenshotX: 0.5,
+            screenshotY: 0.22
+        };
+
+        // Drag state
+        this.dragState = {
+            isDragging: false,
+            dragTarget: null,
+            startX: 0,
+            startY: 0,
+            elementStartX: 0,
+            elementStartY: 0
         };
 
         this.init();
@@ -207,6 +222,7 @@ class AppStoreScreenshotGenerator {
                 this.positionBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.state.textPosition = btn.dataset.position;
+                this.applyPresetPosition(this.state.textPosition);
                 this.updatePreview();
             });
         });
@@ -223,6 +239,127 @@ class AppStoreScreenshotGenerator {
 
         // Export
         this.exportBtn.addEventListener('click', () => this.exportImage());
+
+        // Drag events for preview canvas
+        this.previewCanvas.addEventListener('mousedown', (e) => this.handleCanvasMouseDown(e));
+        document.addEventListener('mousemove', (e) => this.handleCanvasMouseMove(e));
+        document.addEventListener('mouseup', () => this.handleCanvasMouseUp());
+        
+        // Touch events for mobile
+        this.previewCanvas.addEventListener('touchstart', (e) => this.handleCanvasTouchStart(e), { passive: false });
+        document.addEventListener('touchmove', (e) => this.handleCanvasTouchMove(e), { passive: false });
+        document.addEventListener('touchend', () => this.handleCanvasMouseUp());
+    }
+
+    applyPresetPosition(position) {
+        switch(position) {
+            case 'top':
+                this.state.textY = 0.08;
+                this.state.screenshotY = 0.28;
+                break;
+            case 'center':
+                this.state.textY = 0.12;
+                this.state.screenshotY = 0.38;
+                break;
+            case 'bottom':
+                this.state.textY = 0.78;
+                this.state.screenshotY = 0.15;
+                break;
+        }
+    }
+
+    handleCanvasMouseDown(e) {
+        const target = e.target.closest('.draggable-element');
+        if (!target) return;
+        
+        e.preventDefault();
+        const rect = this.previewCanvas.getBoundingClientRect();
+        
+        this.dragState = {
+            isDragging: true,
+            dragTarget: target.dataset.element,
+            startX: e.clientX,
+            startY: e.clientY,
+            elementStartX: target.dataset.element === 'text' ? this.state.textX : this.state.screenshotX,
+            elementStartY: target.dataset.element === 'text' ? this.state.textY : this.state.screenshotY,
+            canvasRect: rect
+        };
+
+        target.style.cursor = 'grabbing';
+    }
+
+    handleCanvasTouchStart(e) {
+        const target = e.target.closest('.draggable-element');
+        if (!target) return;
+        
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.previewCanvas.getBoundingClientRect();
+        
+        this.dragState = {
+            isDragging: true,
+            dragTarget: target.dataset.element,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            elementStartX: target.dataset.element === 'text' ? this.state.textX : this.state.screenshotX,
+            elementStartY: target.dataset.element === 'text' ? this.state.textY : this.state.screenshotY,
+            canvasRect: rect
+        };
+    }
+
+    handleCanvasMouseMove(e) {
+        if (!this.dragState.isDragging) return;
+        
+        const dx = e.clientX - this.dragState.startX;
+        const dy = e.clientY - this.dragState.startY;
+        
+        const canvasWidth = this.dragState.canvasRect.width;
+        const canvasHeight = this.dragState.canvasRect.height;
+        
+        const relativeDx = dx / canvasWidth;
+        const relativeDy = dy / canvasHeight;
+        
+        if (this.dragState.dragTarget === 'text') {
+            this.state.textX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+            this.state.textY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+        } else if (this.dragState.dragTarget === 'screenshot') {
+            this.state.screenshotX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+            this.state.screenshotY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+        }
+        
+        this.updatePreview();
+    }
+
+    handleCanvasTouchMove(e) {
+        if (!this.dragState.isDragging) return;
+        e.preventDefault();
+        
+        const touch = e.touches[0];
+        const dx = touch.clientX - this.dragState.startX;
+        const dy = touch.clientY - this.dragState.startY;
+        
+        const canvasWidth = this.dragState.canvasRect.width;
+        const canvasHeight = this.dragState.canvasRect.height;
+        
+        const relativeDx = dx / canvasWidth;
+        const relativeDy = dy / canvasHeight;
+        
+        if (this.dragState.dragTarget === 'text') {
+            this.state.textX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+            this.state.textY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+        } else if (this.dragState.dragTarget === 'screenshot') {
+            this.state.screenshotX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+            this.state.screenshotY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+        }
+        
+        this.updatePreview();
+    }
+
+    handleCanvasMouseUp() {
+        if (this.dragState.isDragging) {
+            this.dragState.isDragging = false;
+            this.dragState.dragTarget = null;
+        }
     }
 
     handleDragOver(e, element) {
@@ -329,46 +466,29 @@ class AppStoreScreenshotGenerator {
             html += `<div class="preview-canvas-content" style="background: linear-gradient(135deg, ${this.state.gradientColor1}, ${this.state.gradientColor2});">`;
         }
 
-        // Text container position
-        const textPositionClass = this.state.textPosition;
-        
-        // Build content based on position
-        if (this.state.textPosition === 'top') {
-            // Text first, then device
-            html += this.buildTextContainer(textPositionClass);
-            html += this.buildDeviceFrame(device, scale);
-        } else if (this.state.textPosition === 'bottom') {
-            // Device first, then text
-            html += this.buildDeviceFrame(device, scale);
-            html += this.buildTextContainer(textPositionClass);
-        } else {
-            // Center - text overlaid on center
-            html += `<div style="flex: 1;"></div>`;
-            html += this.buildTextContainer(textPositionClass);
-            html += `<div style="flex: 1;"></div>`;
-        }
-
-        html += '</div>';
-        this.previewCanvas.innerHTML = html;
-    }
-
-    buildTextContainer(positionClass) {
-        let html = `<div class="text-container ${positionClass}">`;
+        // Text container - draggable
+        const textTop = this.state.textY * 100;
+        html += `<div class="text-container draggable-element" data-element="text" style="position: absolute; top: ${textTop}%; left: 50%; transform: translateX(-50%); padding: 20px 40px;">`;
         
         if (this.state.title) {
-            html += `<h2 class="preview-title" style="color: ${this.state.titleColor}; font-size: ${this.state.titleFontSize}px;">${this.escapeHtml(this.state.title)}</h2>`;
+            html += `<h2 class="preview-title" style="color: ${this.state.titleColor}; font-size: ${this.state.titleFontSize}px; white-space: nowrap;">${this.escapeHtml(this.state.title)}</h2>`;
         } else {
-            html += `<h2 class="preview-title" style="color: ${this.state.titleColor}; font-size: ${this.state.titleFontSize}px;">输入标题文字</h2>`;
+            html += `<h2 class="preview-title" style="color: ${this.state.titleColor}; font-size: ${this.state.titleFontSize}px; white-space: nowrap;">输入标题文字</h2>`;
         }
         
         if (this.state.subtitle) {
-            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px;">${this.escapeHtml(this.state.subtitle)}</p>`;
+            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px; white-space: nowrap;">${this.escapeHtml(this.state.subtitle)}</p>`;
         } else {
-            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px;">输入副标题文字</p>`;
+            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px; white-space: nowrap;">输入副标题文字</p>`;
         }
         
         html += '</div>';
-        return html;
+
+        // Screenshot frame - draggable
+        html += this.buildDeviceFrame(device, scale);
+
+        html += '</div>';
+        this.previewCanvas.innerHTML = html;
     }
 
     buildDeviceFrame(device, scale) {
@@ -376,48 +496,38 @@ class AppStoreScreenshotGenerator {
         
         const framePadding = 12 * scale;
         const borderRadius = this.state.showFrame ? 40 * scale : 0;
-        const innerBorderRadius = this.state.showFrame ? 32 * scale : 0;
+        const innerBorderRadius = this.state.showFrame ? 32 * scale : 20 * scale;
+
+        // Calculate screenshot size - larger to be the main focus
+        const maxScreenshotWidth = device.width * 0.85;
+        const maxScreenshotHeight = device.height * 0.68;
+        
+        let screenshotWidth = this.state.screenshot.width;
+        let screenshotHeight = this.state.screenshot.height;
+        
+        // Scale to fit
+        const widthRatio = maxScreenshotWidth / screenshotWidth;
+        const heightRatio = maxScreenshotHeight / screenshotHeight;
+        const ratio = Math.min(widthRatio, heightRatio);
+        
+        screenshotWidth *= ratio * scale;
+        screenshotHeight *= ratio * scale;
+
+        // Position based on state
+        const left = this.state.screenshotX * 100;
+        const top = this.state.screenshotY * 100;
 
         let html = '';
         
         if (this.state.showFrame) {
-            // Calculate screenshot size to fit in device
-            const maxScreenshotWidth = device.width * 0.7;
-            const maxScreenshotHeight = device.height * 0.55;
-            
-            let screenshotWidth = this.state.screenshot.width;
-            let screenshotHeight = this.state.screenshot.height;
-            
-            // Scale to fit
-            const widthRatio = maxScreenshotWidth / screenshotWidth;
-            const heightRatio = maxScreenshotHeight / screenshotHeight;
-            const ratio = Math.min(widthRatio, heightRatio);
-            
-            screenshotWidth *= ratio * scale;
-            screenshotHeight *= ratio * scale;
-            
-            html += `<div class="device-frame" style="background: ${this.state.frameColor}; border-radius: ${borderRadius}px; padding: ${framePadding}px;">`;
+            html += `<div class="device-frame draggable-element" data-element="screenshot" style="position: absolute; top: ${top}%; left: ${left}%; transform: translate(-50%, 0); background: ${this.state.frameColor}; border-radius: ${borderRadius}px; padding: ${framePadding}px; cursor: grab;">`;
             html += `<div class="device-frame-inner" style="border-radius: ${innerBorderRadius}px;">`;
-            html += `<img src="${this.state.screenshot.src}" style="width: ${screenshotWidth}px; height: ${screenshotHeight}px; object-fit: cover;">`;
+            html += `<img src="${this.state.screenshot.src}" style="width: ${screenshotWidth}px; height: ${screenshotHeight}px; object-fit: cover; display: block;">`;
             html += '</div>';
             html += '</div>';
         } else {
-            // No frame, just screenshot
-            const maxScreenshotWidth = device.width * 0.8;
-            const maxScreenshotHeight = device.height * 0.6;
-            
-            let screenshotWidth = this.state.screenshot.width;
-            let screenshotHeight = this.state.screenshot.height;
-            
-            const widthRatio = maxScreenshotWidth / screenshotWidth;
-            const heightRatio = maxScreenshotHeight / screenshotHeight;
-            const ratio = Math.min(widthRatio, heightRatio);
-            
-            screenshotWidth *= ratio * scale;
-            screenshotHeight *= ratio * scale;
-            
-            html += `<div style="margin: 20px ${framePadding}px;">`;
-            html += `<img src="${this.state.screenshot.src}" style="width: ${screenshotWidth}px; height: ${screenshotHeight}px; object-fit: cover; border-radius: ${innerBorderRadius}px;">`;
+            html += `<div class="draggable-element" data-element="screenshot" style="position: absolute; top: ${top}%; left: ${left}%; transform: translate(-50%, 0); cursor: grab;">`;
+            html += `<img src="${this.state.screenshot.src}" style="width: ${screenshotWidth}px; height: ${screenshotHeight}px; object-fit: cover; border-radius: ${innerBorderRadius}px; display: block;">`;
             html += '</div>';
         }
         
@@ -453,23 +563,33 @@ class AppStoreScreenshotGenerator {
             ctx.drawImage(this.state.bgImage, 0, 0, device.width, device.height);
         }
 
-        // Calculate positions
-        const isTop = this.state.textPosition === 'top';
-        const isBottom = this.state.textPosition === 'bottom';
-        const isCenter = this.state.textPosition === 'center';
+        // Draw text at custom position
+        if (this.state.title || this.state.subtitle) {
+            const textX = this.state.textX * device.width;
+            const textY = this.state.textY * device.height;
 
-        // Calculate screenshot size and position
-        let screenshotWidth = 0;
-        let screenshotHeight = 0;
-        let screenshotX = 0;
-        let screenshotY = 0;
-
-        if (this.state.screenshot) {
-            const maxScreenshotWidth = device.width * 0.7;
-            const maxScreenshotHeight = device.height * 0.55;
+            ctx.textAlign = 'center';
             
-            screenshotWidth = this.state.screenshot.width;
-            screenshotHeight = this.state.screenshot.height;
+            // Title
+            ctx.fillStyle = this.state.titleColor;
+            ctx.font = `bold ${this.state.titleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
+            const title = this.state.title || '输入标题文字';
+            ctx.fillText(title, textX, textY);
+
+            // Subtitle
+            ctx.fillStyle = this.state.subtitleColor;
+            ctx.font = `500 ${this.state.subtitleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
+            const subtitle = this.state.subtitle || '输入副标题文字';
+            ctx.fillText(subtitle, textX, textY + this.state.titleFontSize * 1.4);
+        }
+
+        // Draw screenshot at custom position
+        if (this.state.screenshot) {
+            const maxScreenshotWidth = device.width * 0.85;
+            const maxScreenshotHeight = device.height * 0.68;
+            
+            let screenshotWidth = this.state.screenshot.width;
+            let screenshotHeight = this.state.screenshot.height;
             
             const widthRatio = maxScreenshotWidth / screenshotWidth;
             const heightRatio = maxScreenshotHeight / screenshotHeight;
@@ -477,40 +597,18 @@ class AppStoreScreenshotGenerator {
             
             screenshotWidth *= ratio;
             screenshotHeight *= ratio;
-            screenshotX = (device.width - screenshotWidth) / 2;
-        }
 
-        // Text measurements
-        const titleY = isTop ? device.height * 0.12 : (isBottom ? device.height * 0.82 : device.height * 0.25);
-        const subtitleY = titleY + this.state.titleFontSize * 1.5;
-        const deviceY = isTop ? device.height * 0.22 : (isBottom ? device.height * 0.08 : device.height * 0.4);
-        
-        if (this.state.screenshot && !isCenter) {
-            screenshotY = isTop ? deviceY : device.height - deviceY - screenshotHeight;
-        }
+            const framePadding = 12;
+            const frameBorderRadius = 40;
+            const innerBorderRadius = 32;
 
-        // Draw text
-        ctx.textAlign = 'center';
-        
-        // Title
-        ctx.fillStyle = this.state.titleColor;
-        ctx.font = `bold ${this.state.titleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
-        const title = this.state.title || '输入标题文字';
-        ctx.fillText(title, device.width / 2, titleY);
+            // Calculate position from relative coordinates
+            const centerX = this.state.screenshotX * device.width;
+            const topY = this.state.screenshotY * device.height;
+            const screenshotX = centerX - screenshotWidth / 2;
+            const screenshotY = topY;
 
-        // Subtitle
-        ctx.fillStyle = this.state.subtitleColor;
-        ctx.font = `500 ${this.state.subtitleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
-        const subtitle = this.state.subtitle || '输入副标题文字';
-        ctx.fillText(subtitle, device.width / 2, subtitleY);
-
-        // Draw device frame and screenshot
-        if (this.state.screenshot) {
             if (this.state.showFrame) {
-                const framePadding = 12;
-                const frameBorderRadius = 40;
-                const innerBorderRadius = 32;
-                
                 const frameWidth = screenshotWidth + framePadding * 2;
                 const frameHeight = screenshotHeight + framePadding * 2;
                 const frameX = screenshotX - framePadding;
@@ -529,7 +627,11 @@ class AppStoreScreenshotGenerator {
                 ctx.restore();
             } else {
                 // Draw screenshot without frame
+                ctx.save();
+                this.roundRect(ctx, screenshotX, screenshotY, screenshotWidth, screenshotHeight, innerBorderRadius);
+                ctx.clip();
                 ctx.drawImage(this.state.screenshot, screenshotX, screenshotY, screenshotWidth, screenshotHeight);
+                ctx.restore();
             }
         }
 
