@@ -30,7 +30,6 @@ class AppStoreScreenshotGenerator {
             textPosition: 'top',
             showFrame: true,
             frameColor: '#1a1a1a',
-            zoom: 50,
             // Element positions (relative to canvas, 0-1)
             textX: 0.5,
             textY: 0.08,
@@ -116,11 +115,6 @@ class AppStoreScreenshotGenerator {
         
         // Frame toggle
         this.showFrame = document.getElementById('showFrame');
-        
-        // Zoom controls
-        this.zoomIn = document.getElementById('zoomIn');
-        this.zoomOut = document.getElementById('zoomOut');
-        this.zoomLevel = document.getElementById('zoomLevel');
         
         // Preview canvas
         this.previewCanvas = document.getElementById('previewCanvas');
@@ -241,10 +235,6 @@ class AppStoreScreenshotGenerator {
             this.state.showFrame = this.showFrame.checked;
             this.updatePreview();
         });
-
-        // Zoom controls
-        this.zoomIn.addEventListener('click', () => this.adjustZoom(10));
-        this.zoomOut.addEventListener('click', () => this.adjustZoom(-10));
 
         // Export
         this.exportBtn.addEventListener('click', () => this.exportImage());
@@ -613,19 +603,17 @@ class AppStoreScreenshotGenerator {
         this.imageSettings.style.display = this.state.bgType === 'image' ? 'block' : 'none';
     }
 
-    adjustZoom(delta) {
-        this.state.zoom = Math.max(10, Math.min(100, this.state.zoom + delta));
-        this.zoomLevel.textContent = this.state.zoom + '%';
-        this.updatePreview();
-    }
-
     updatePreview() {
         const device = this.deviceSizes[this.state.device];
-        const scale = this.state.zoom / 100;
+        
+        // Preview uses fixed width (375px), height calculated by aspect ratio
+        const previewWidth = 375;
+        const previewHeight = previewWidth * (device.height / device.width);
+        const scale = previewWidth / device.width; // Scale factor for preview
 
-        // Set canvas size
-        this.previewCanvas.style.width = device.width * scale + 'px';
-        this.previewCanvas.style.height = device.height * scale + 'px';
+        // Set canvas size (fixed preview width)
+        this.previewCanvas.style.width = previewWidth + 'px';
+        this.previewCanvas.style.height = previewHeight + 'px';
 
         // Build preview content
         let html = '';
@@ -652,9 +640,9 @@ class AppStoreScreenshotGenerator {
         }
         
         if (this.state.subtitle) {
-            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px; white-space: nowrap;">${this.escapeHtml(this.state.subtitle)}</p>`;
+            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px; white-space: pre-line;">${this.escapeHtml(this.state.subtitle)}</p>`;
         } else {
-            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px; white-space: nowrap;">输入副标题文字</p>`;
+            html += `<p class="preview-subtitle" style="color: ${this.state.subtitleColor}; font-size: ${this.state.subtitleFontSize}px; white-space: pre-line;">输入副标题文字</p>`;
         }
         
         html += '</div>';
@@ -740,11 +728,15 @@ class AppStoreScreenshotGenerator {
             const title = this.state.title || '输入标题文字';
             ctx.fillText(title, textX, textY);
 
-            // Subtitle
+            // Subtitle (support multiple lines)
             ctx.fillStyle = this.state.subtitleColor;
             ctx.font = `500 ${this.state.subtitleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
             const subtitle = this.state.subtitle || '输入副标题文字';
-            ctx.fillText(subtitle, textX, textY + this.state.titleFontSize * 1.4);
+            const lines = subtitle.split('\n');
+            const lineHeight = this.state.subtitleFontSize * 1.4;
+            lines.forEach((line, index) => {
+                ctx.fillText(line, textX, textY + this.state.titleFontSize * 1.4 + index * lineHeight);
+            });
         }
 
         // Draw screenshot at custom position
