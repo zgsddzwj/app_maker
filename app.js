@@ -298,17 +298,34 @@ class AppStoreScreenshotGenerator {
         e.preventDefault();
         const rect = this.previewCanvas.getBoundingClientRect();
         
-        this.dragState = {
-            isDragging: true,
-            dragTarget: target.dataset.element,
-            startX: e.clientX,
-            startY: e.clientY,
-            elementStartX: target.dataset.element === 'text' ? this.state.textX : this.state.screenshotX,
-            elementStartY: target.dataset.element === 'text' ? this.state.textY : this.state.screenshotY,
-            canvasRect: rect
-        };
-
-        target.style.cursor = 'grabbing';
+        // Check if clicking on frame (for scaling) or inner image (for dragging)
+        const isOnFrame = target.classList.contains('device-frame') && !e.target.closest('.device-frame-inner');
+        
+        if (isOnFrame && target.dataset.element === 'screenshot') {
+            // On frame - start scaling
+            this.dragState = {
+                isDragging: true,
+                dragTarget: 'scale',
+                startX: e.clientX,
+                startY: e.clientY,
+                elementStartX: this.state.screenshotX,
+                elementStartY: this.state.screenshotY,
+                startScale: this.state.screenshotScale,
+                canvasRect: rect
+            };
+        } else {
+            // On inner image or text - start dragging
+            this.dragState = {
+                isDragging: true,
+                dragTarget: target.dataset.element,
+                startX: e.clientX,
+                startY: e.clientY,
+                elementStartX: target.dataset.element === 'text' ? this.state.textX : this.state.screenshotX,
+                elementStartY: target.dataset.element === 'text' ? this.state.textY : this.state.screenshotY,
+                canvasRect: rect
+            };
+            target.style.cursor = 'grabbing';
+        }
     }
 
     handleCanvasTouchStart(e) {
@@ -343,20 +360,37 @@ class AppStoreScreenshotGenerator {
         
         if (!target) return;
         
-        // Single touch or touch on frame - start drag
         e.preventDefault();
         const touch = e.touches[0];
         const rect = this.previewCanvas.getBoundingClientRect();
         
-        this.dragState = {
-            isDragging: true,
-            dragTarget: target.dataset.element,
-            startX: touch.clientX,
-            startY: touch.clientY,
-            elementStartX: target.dataset.element === 'text' ? this.state.textX : this.state.screenshotX,
-            elementStartY: target.dataset.element === 'text' ? this.state.textY : this.state.screenshotY,
-            canvasRect: rect
-        };
+        // Check if touching on frame (for scaling) or inner image (for dragging)
+        const isOnFrame = target.classList.contains('device-frame') && !touch.target.closest('.device-frame-inner');
+        
+        if (isOnFrame && target.dataset.element === 'screenshot') {
+            // On frame - start scaling
+            this.dragState = {
+                isDragging: true,
+                dragTarget: 'scale',
+                startX: touch.clientX,
+                startY: touch.clientY,
+                elementStartX: this.state.screenshotX,
+                elementStartY: this.state.screenshotY,
+                startScale: this.state.screenshotScale,
+                canvasRect: rect
+            };
+        } else {
+            // On inner image or text - start dragging
+            this.dragState = {
+                isDragging: true,
+                dragTarget: target.dataset.element,
+                startX: touch.clientX,
+                startY: touch.clientY,
+                elementStartX: target.dataset.element === 'text' ? this.state.textX : this.state.screenshotX,
+                elementStartY: target.dataset.element === 'text' ? this.state.textY : this.state.screenshotY,
+                canvasRect: rect
+            };
+        }
     }
 
     handleCanvasMouseMove(e) {
@@ -368,15 +402,35 @@ class AppStoreScreenshotGenerator {
         const canvasWidth = this.dragState.canvasRect.width;
         const canvasHeight = this.dragState.canvasRect.height;
         
-        const relativeDx = dx / canvasWidth;
-        const relativeDy = dy / canvasHeight;
-        
-        if (this.dragState.dragTarget === 'text') {
-            this.state.textX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
-            this.state.textY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
-        } else if (this.dragState.dragTarget === 'screenshot') {
-            this.state.screenshotX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
-            this.state.screenshotY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+        if (this.dragState.dragTarget === 'scale') {
+            // On frame - scale the screenshot
+            // Use diagonal distance for more intuitive scaling
+            const distance = Math.hypot(dx, dy);
+            const avgCanvasSize = (canvasWidth + canvasHeight) / 2;
+            const scaleDelta = distance / avgCanvasSize;
+            
+            // Determine direction based on whether moving away from or towards center
+            const direction = (dx + dy) > 0 ? 1 : -1;
+            const newScale = Math.max(0.1, Math.min(3, this.dragState.startScale + scaleDelta * direction * 2));
+            this.state.screenshotScale = newScale;
+            
+            // Update slider
+            if (this.screenshotScale) {
+                this.screenshotScale.value = newScale;
+                this.screenshotScaleValue.textContent = Math.round(newScale * 100) + '%';
+            }
+        } else {
+            // On inner image or text - drag to move
+            const relativeDx = dx / canvasWidth;
+            const relativeDy = dy / canvasHeight;
+            
+            if (this.dragState.dragTarget === 'text') {
+                this.state.textX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+                this.state.textY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+            } else if (this.dragState.dragTarget === 'screenshot') {
+                this.state.screenshotX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+                this.state.screenshotY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+            }
         }
         
         this.updatePreview();
@@ -399,15 +453,33 @@ class AppStoreScreenshotGenerator {
         const canvasWidth = this.dragState.canvasRect.width;
         const canvasHeight = this.dragState.canvasRect.height;
         
-        const relativeDx = dx / canvasWidth;
-        const relativeDy = dy / canvasHeight;
-        
-        if (this.dragState.dragTarget === 'text') {
-            this.state.textX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
-            this.state.textY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
-        } else if (this.dragState.dragTarget === 'screenshot') {
-            this.state.screenshotX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
-            this.state.screenshotY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+        if (this.dragState.dragTarget === 'scale') {
+            // On frame - scale the screenshot
+            const distance = Math.hypot(dx, dy);
+            const avgCanvasSize = (canvasWidth + canvasHeight) / 2;
+            const scaleDelta = distance / avgCanvasSize;
+            
+            const direction = (dx + dy) > 0 ? 1 : -1;
+            const newScale = Math.max(0.1, Math.min(3, this.dragState.startScale + scaleDelta * direction * 2));
+            this.state.screenshotScale = newScale;
+            
+            // Update slider
+            if (this.screenshotScale) {
+                this.screenshotScale.value = newScale;
+                this.screenshotScaleValue.textContent = Math.round(newScale * 100) + '%';
+            }
+        } else {
+            // On inner image or text - drag to move
+            const relativeDx = dx / canvasWidth;
+            const relativeDy = dy / canvasHeight;
+            
+            if (this.dragState.dragTarget === 'text') {
+                this.state.textX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+                this.state.textY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+            } else if (this.dragState.dragTarget === 'screenshot') {
+                this.state.screenshotX = Math.max(0, Math.min(1, this.dragState.elementStartX + relativeDx));
+                this.state.screenshotY = Math.max(0, Math.min(1, this.dragState.elementStartY + relativeDy));
+            }
         }
         
         this.updatePreview();

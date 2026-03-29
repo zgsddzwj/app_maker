@@ -703,7 +703,7 @@ body {
     border-radius: 40px;
     padding: 12px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    cursor: grab;
+    cursor: nwse-resize;
     transition: transform 0.1s ease, box-shadow 0.2s ease;
 }
 
@@ -712,19 +712,29 @@ body {
 }
 
 .device-frame:active {
-    cursor: grabbing;
+    cursor: nwse-resize;
 }
 
 .device-frame-inner {
     border-radius: 32px;
     overflow: hidden;
     position: relative;
+    cursor: grab;
+}
+
+.device-frame-inner:active {
+    cursor: grabbing;
 }
 
 .device-frame-inner img {
     display: block;
     max-width: 100%;
     max-height: 100%;
+    cursor: grab;
+}
+
+.device-frame-inner img:active {
+    cursor: grabbing;
 }
 
 /* Draggable Element */
