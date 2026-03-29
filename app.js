@@ -35,7 +35,9 @@ class AppStoreScreenshotGenerator {
             textX: 0.5,
             textY: 0.08,
             screenshotX: 0.5,
-            screenshotY: 0.22
+            screenshotY: 0.22,
+            // Screenshot scale (1 = original size)
+            screenshotScale: 1
         };
 
         // Drag state
@@ -46,6 +48,13 @@ class AppStoreScreenshotGenerator {
             startY: 0,
             elementStartX: 0,
             elementStartY: 0
+        };
+
+        // Pinch state for scaling
+        this.pinchState = {
+            isPinching: false,
+            startDistance: 0,
+            startScale: 1
         };
 
         this.init();
@@ -249,6 +258,20 @@ class AppStoreScreenshotGenerator {
         this.previewCanvas.addEventListener('touchstart', (e) => this.handleCanvasTouchStart(e), { passive: false });
         document.addEventListener('touchmove', (e) => this.handleCanvasTouchMove(e), { passive: false });
         document.addEventListener('touchend', () => this.handleCanvasMouseUp());
+
+        // Wheel event for scaling screenshot (desktop)
+        this.previewCanvas.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
+
+        // Screenshot scale slider
+        this.screenshotScale = document.getElementById('screenshotScale');
+        this.screenshotScaleValue = document.getElementById('screenshotScaleValue');
+        if (this.screenshotScale) {
+            this.screenshotScale.addEventListener('input', () => {
+                this.state.screenshotScale = parseFloat(this.screenshotScale.value);
+                this.screenshotScaleValue.textContent = Math.round(this.state.screenshotScale * 100) + '%';
+                this.updatePreview();
+            });
+        }
     }
 
     applyPresetPosition(position) {
@@ -290,6 +313,22 @@ class AppStoreScreenshotGenerator {
 
     handleCanvasTouchStart(e) {
         const target = e.target.closest('.draggable-element');
+        
+        // Handle pinch zoom with two fingers on screenshot
+        if (e.touches.length === 2 && target && target.dataset.element === 'screenshot') {
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+            
+            this.pinchState = {
+                isPinching: true,
+                startDistance: distance,
+                startScale: this.state.screenshotScale
+            };
+            return;
+        }
+        
         if (!target) return;
         
         e.preventDefault();
@@ -331,6 +370,12 @@ class AppStoreScreenshotGenerator {
     }
 
     handleCanvasTouchMove(e) {
+        // Handle pinch zoom
+        if (this.pinchState.isPinching && e.touches.length === 2) {
+            this.handlePinchMove(e);
+            return;
+        }
+        
         if (!this.dragState.isDragging) return;
         e.preventDefault();
         
@@ -360,6 +405,51 @@ class AppStoreScreenshotGenerator {
             this.dragState.isDragging = false;
             this.dragState.dragTarget = null;
         }
+        if (this.pinchState.isPinching) {
+            this.pinchState.isPinching = false;
+        }
+    }
+
+    // Handle mouse wheel for scaling screenshot (desktop)
+    handleWheel(e) {
+        const target = e.target.closest('.draggable-element');
+        if (!target || target.dataset.element !== 'screenshot') return;
+        
+        e.preventDefault();
+        
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        const newScale = Math.max(0.1, Math.min(3, this.state.screenshotScale + delta));
+        this.state.screenshotScale = newScale;
+        
+        // Update slider if exists
+        if (this.screenshotScale) {
+            this.screenshotScale.value = newScale;
+            this.screenshotScaleValue.textContent = Math.round(newScale * 100) + '%';
+        }
+        
+        this.updatePreview();
+    }
+
+    // Handle pinch zoom (mobile)
+    handlePinchMove(e) {
+        if (!this.pinchState.isPinching || e.touches.length !== 2) return;
+        
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        
+        const scale = distance / this.pinchState.startDistance;
+        const newScale = Math.max(0.1, Math.min(3, this.pinchState.startScale * scale));
+        this.state.screenshotScale = newScale;
+        
+        // Update slider if exists
+        if (this.screenshotScale) {
+            this.screenshotScale.value = newScale;
+            this.screenshotScaleValue.textContent = Math.round(newScale * 100) + '%';
+        }
+        
+        this.updatePreview();
     }
 
     handleDragOver(e, element) {
@@ -494,9 +584,9 @@ class AppStoreScreenshotGenerator {
     buildDeviceFrame(device, scale) {
         if (!this.state.screenshot) return '';
         
-        // Use original screenshot size (scaled by zoom)
-        let screenshotWidth = this.state.screenshot.width * scale;
-        let screenshotHeight = this.state.screenshot.height * scale;
+        // Use screenshot size with custom scale (scaled by zoom for preview)
+        let screenshotWidth = this.state.screenshot.width * this.state.screenshotScale * scale;
+        let screenshotHeight = this.state.screenshot.height * this.state.screenshotScale * scale;
         
         const framePadding = 12 * scale;
         const borderRadius = this.state.showFrame ? 40 * scale : 0;
@@ -574,9 +664,9 @@ class AppStoreScreenshotGenerator {
 
         // Draw screenshot at custom position
         if (this.state.screenshot) {
-            // Use original screenshot size (no auto-scaling)
-            const screenshotWidth = this.state.screenshot.width;
-            const screenshotHeight = this.state.screenshot.height;
+            // Apply custom scale to screenshot
+            const screenshotWidth = this.state.screenshot.width * this.state.screenshotScale;
+            const screenshotHeight = this.state.screenshot.height * this.state.screenshotScale;
 
             const framePadding = 12;
             const frameBorderRadius = 40;
