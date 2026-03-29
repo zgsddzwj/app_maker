@@ -494,26 +494,15 @@ class AppStoreScreenshotGenerator {
     buildDeviceFrame(device, scale) {
         if (!this.state.screenshot) return '';
         
+        // Use original screenshot size (scaled by zoom)
+        let screenshotWidth = this.state.screenshot.width * scale;
+        let screenshotHeight = this.state.screenshot.height * scale;
+        
         const framePadding = 12 * scale;
         const borderRadius = this.state.showFrame ? 40 * scale : 0;
         const innerBorderRadius = this.state.showFrame ? 32 * scale : 20 * scale;
 
-        // Calculate screenshot size - larger to be the main focus
-        const maxScreenshotWidth = device.width * 0.85;
-        const maxScreenshotHeight = device.height * 0.68;
-        
-        let screenshotWidth = this.state.screenshot.width;
-        let screenshotHeight = this.state.screenshot.height;
-        
-        // Scale to fit
-        const widthRatio = maxScreenshotWidth / screenshotWidth;
-        const heightRatio = maxScreenshotHeight / screenshotHeight;
-        const ratio = Math.min(widthRatio, heightRatio);
-        
-        screenshotWidth *= ratio * scale;
-        screenshotHeight *= ratio * scale;
-
-        // Position based on state
+        // Position based on state (in pixels for more precise control)
         const left = this.state.screenshotX * 100;
         const top = this.state.screenshotY * 100;
 
@@ -585,18 +574,9 @@ class AppStoreScreenshotGenerator {
 
         // Draw screenshot at custom position
         if (this.state.screenshot) {
-            const maxScreenshotWidth = device.width * 0.85;
-            const maxScreenshotHeight = device.height * 0.68;
-            
-            let screenshotWidth = this.state.screenshot.width;
-            let screenshotHeight = this.state.screenshot.height;
-            
-            const widthRatio = maxScreenshotWidth / screenshotWidth;
-            const heightRatio = maxScreenshotHeight / screenshotHeight;
-            const ratio = Math.min(widthRatio, heightRatio);
-            
-            screenshotWidth *= ratio;
-            screenshotHeight *= ratio;
+            // Use original screenshot size (no auto-scaling)
+            const screenshotWidth = this.state.screenshot.width;
+            const screenshotHeight = this.state.screenshot.height;
 
             const framePadding = 12;
             const frameBorderRadius = 40;
