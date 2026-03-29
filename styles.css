@@ -702,13 +702,63 @@ body {
     position: relative;
     border-radius: 40px;
     padding: 12px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(145deg, #2a2a3a, #1a1a2a);
     cursor: nwse-resize;
-    transition: transform 0.1s ease, box-shadow 0.2s ease;
+    transition: all 0.3s ease;
+    /* Glow effect */
+    box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 0 30px rgba(102, 126, 234, 0.3),
+        0 0 60px rgba(102, 126, 234, 0.1),
+        0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.device-frame::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 42px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.2) 0%, 
+        rgba(102, 126, 234, 0.4) 25%, 
+        rgba(118, 75, 162, 0.4) 50%, 
+        rgba(255, 255, 255, 0.1) 100%);
+    z-index: -1;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+.device-frame::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0 0 15px 15px;
+    top: 0;
+    border-radius: 15px;
+    width: 80px;
+    height: 22px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .device-frame:hover {
-    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+    box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.15),
+        0 0 40px rgba(102, 126, 234, 0.5),
+        0 0 80px rgba(102, 126, 234, 0.2),
+        0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+.device-frame:hover::before {
+    opacity: 1;
 }
 
 .device-frame:active {
@@ -720,6 +770,7 @@ body {
     overflow: hidden;
     position: relative;
     cursor: grab;
+    background: #000;
 }
 
 .device-frame-inner:active {

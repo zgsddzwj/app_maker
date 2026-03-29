@@ -5,11 +5,12 @@ class AppStoreScreenshotGenerator {
     constructor() {
         // Device sizes (width x height)
         this.deviceSizes = {
-            iphone67: { width: 1290, height: 2796, name: 'iPhone 6.7"' },
-            iphone65: { width: 1242, height: 2688, name: 'iPhone 6.5"' },
-            iphone55: { width: 1242, height: 2208, name: 'iPhone 5.5"' },
-            ipad13: { width: 2048, height: 2732, name: 'iPad 13"' },
-            ipad11: { width: 1668, height: 2388, name: 'iPad 11"' }
+            iphone67: { width: 1290, height: 2796, name: 'iPhone 6.7" (1290×2796)' },
+            iphone69: { width: 1284, height: 2778, name: 'iPhone 6.9" (1284×2778)' },
+            iphone65: { width: 1242, height: 2688, name: 'iPhone 6.5" (1242×2688)' },
+            iphone55: { width: 1242, height: 2208, name: 'iPhone 5.5" (1242×2208)' },
+            ipad13: { width: 2048, height: 2732, name: 'iPad 13" (2048×2732)' },
+            ipad11: { width: 1668, height: 2388, name: 'iPad 11" (1668×2388)' }
         };
 
         // Current state
@@ -717,25 +718,32 @@ class AppStoreScreenshotGenerator {
 
         // Draw text at custom position
         if (this.state.title || this.state.subtitle) {
+            // Scale factor: preview is 375px, export is actual device width
+            const exportScale = device.width / 375;
+            
             const textX = this.state.textX * device.width;
-            const textY = this.state.textY * device.height;
+            // Account for text container padding (20px in preview, scaled for export)
+            const paddingTop = 20 * exportScale;
+            const textY = this.state.textY * device.height + paddingTop;
 
             ctx.textAlign = 'center';
             
-            // Title
+            // Title - scale font size for export
+            const exportTitleFontSize = this.state.titleFontSize * exportScale;
             ctx.fillStyle = this.state.titleColor;
-            ctx.font = `bold ${this.state.titleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.font = `bold ${exportTitleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
             const title = this.state.title || '输入标题文字';
             ctx.fillText(title, textX, textY);
 
-            // Subtitle (support multiple lines)
+            // Subtitle (support multiple lines) - scale font size for export
+            const exportSubtitleFontSize = this.state.subtitleFontSize * exportScale;
             ctx.fillStyle = this.state.subtitleColor;
-            ctx.font = `500 ${this.state.subtitleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.font = `500 ${exportSubtitleFontSize}px "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif`;
             const subtitle = this.state.subtitle || '输入副标题文字';
             const lines = subtitle.split('\n');
-            const lineHeight = this.state.subtitleFontSize * 1.4;
+            const lineHeight = exportSubtitleFontSize * 1.4;
             lines.forEach((line, index) => {
-                ctx.fillText(line, textX, textY + this.state.titleFontSize * 1.4 + index * lineHeight);
+                ctx.fillText(line, textX, textY + exportTitleFontSize * 1.4 + index * lineHeight);
             });
         }
 
