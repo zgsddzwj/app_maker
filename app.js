@@ -314,23 +314,36 @@ class AppStoreScreenshotGenerator {
     handleCanvasTouchStart(e) {
         const target = e.target.closest('.draggable-element');
         
-        // Handle pinch zoom with two fingers on screenshot
-        if (e.touches.length === 2 && target && target.dataset.element === 'screenshot') {
-            e.preventDefault();
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        // Handle pinch zoom with two fingers only when both touches are on the screenshot image (not frame)
+        if (e.touches.length === 2) {
+            const target1 = e.touches[0].target.closest('.draggable-element');
+            const target2 = e.touches[1].target.closest('.draggable-element');
             
-            this.pinchState = {
-                isPinching: true,
-                startDistance: distance,
-                startScale: this.state.screenshotScale
-            };
-            return;
+            // Only pinch zoom if both touches are on the inner image, not on the frame
+            const isOnInnerImage = (t) => t && (t.tagName === 'IMG' || t.closest('.device-frame-inner'));
+            const touch1OnImage = isOnInnerImage(e.touches[0].target);
+            const touch2OnImage = isOnInnerImage(e.touches[1].target);
+            
+            if (target1 && target1.dataset.element === 'screenshot' && 
+                target2 && target2.dataset.element === 'screenshot' &&
+                touch1OnImage && touch2OnImage) {
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+                
+                this.pinchState = {
+                    isPinching: true,
+                    startDistance: distance,
+                    startScale: this.state.screenshotScale
+                };
+                return;
+            }
         }
         
         if (!target) return;
         
+        // Single touch or touch on frame - start drag
         e.preventDefault();
         const touch = e.touches[0];
         const rect = this.previewCanvas.getBoundingClientRect();
